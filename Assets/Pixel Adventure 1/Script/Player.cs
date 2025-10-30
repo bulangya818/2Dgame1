@@ -1,4 +1,4 @@
-using System;
+/*using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net.Mime;
@@ -228,5 +228,5 @@ public class Player : MonoBehaviour
     /*private void showpanell()
     {
         UIcontroller.instance.showpanel("failpanel");
-    }*/
-}
+    }#1#
+}*/

@@ -1,4 +1,4 @@
-using System;
+/*using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -66,19 +66,19 @@ public class playerAction : MonoBehaviour
         {
             // transform.position += new Vector3(1 * Time.deltaTime, 0, 0);
             Rig.velocity = Vector2.right * 1;
-        }*/
+        }#1#
 
-        /*// 按空格键时给角色施加向上的力，实现跳跃
+        /#1#/ 按空格键时给角色施加向上的力，实现跳跃
         if (Input.GetKeyDown(KeyCode.Space))
         {
             Rig.AddForce(Vector2.up * 300);
-        }*/
+        }#1#
 
-        /*// 按S键时使角色向下移动
+        /#1#/ 按S键时使角色向下移动
         if (Input.GetKey(KeyCode.S))
         {
             transform.position += new Vector3(0, -1 * Time.deltaTime, 0);
-        }*/
+        }#1#
     }
 
     private void flip()
@@ -88,4 +88,4 @@ public class playerAction : MonoBehaviour
         faceRight = !faceRight;
         transform.localScale = v;
     }
-}
+}*/

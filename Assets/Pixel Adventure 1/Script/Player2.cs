@@ -1,4 +1,4 @@
-using System;
+/*using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -90,7 +90,7 @@ public class Player2 : MonoBehaviour
     void Update()
     {
         /*flip();
-        Move();*/
+        Move();#1#
         // 获取水平轴输入（A/D键或方向键左右），返回-1到1之间的值
         h = Input.GetAxis("Horizontal");
         an.SetFloat("speed", Mathf.Abs(h)); // 设置动画参数speed为水平输入的绝对值
@@ -100,7 +100,7 @@ public class Player2 : MonoBehaviour
         rig.velocity = new Vector2(h * 2f, rig.velocity.y);
 
         // 如果玩家向右移动，设置玩家面向右侧
-        if (h > 0 /*&&faceRight==false*/)
+        if (h > 0 /*&&faceRight==false#1#)
         {
             // 只有当角色从静止状态转为移动状态时才播放脚步声
             if (!isMoving && Mathf.Abs(h) > 0.2f)
@@ -114,11 +114,11 @@ public class Player2 : MonoBehaviour
             v.x = 1; // 设置X轴缩放为正数，角色面向右侧
             transform.localScale = v;
             /*partical.Play();
-            faceRight = true;*/
+            faceRight = true;#1#
         }
 
         // 如果玩家向左移动，设置玩家面向左侧
-        else if (h < 0 /*&&faceRight==true*/)
+        else if (h < 0 /*&&faceRight==true#1#)
         {
             // 只有当角色从静止状态转为移动状态时才播放脚步声
             if (!isMoving && Mathf.Abs(h) > 0.2f)
@@ -132,7 +132,7 @@ public class Player2 : MonoBehaviour
             v.x = -1; // 设置X轴缩放为负数，角色面向左侧
             transform.localScale = v;
             /*partical.Play();
-            faceRight = false;*/
+            faceRight = false;#1#
         }
         // 如果玩家停止移动
         else if (Mathf.Abs(h) <= 0.2f)
@@ -305,4 +305,4 @@ public class Player2 : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载当前场景
     }
-}
+}*/

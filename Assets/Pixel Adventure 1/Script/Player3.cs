@@ -75,6 +75,16 @@ public class Player3 : MonoBehaviour
     /// 玩家当前分数
     /// </summary>
     private int score;
+    
+    /// <summary>
+    /// 主相机引用
+    /// </summary>
+    private Camera mainCamera;
+    
+    /// <summary>
+    /// 相机跟随偏移量
+    /// </summary>
+    private Vector3 cameraOffset;
 
     // Start is called before the first frame update
     void Start()
@@ -90,6 +100,13 @@ public class Player3 : MonoBehaviour
         transform.position = startpos.transform.position;
         score = 0;
         text.text = "得分:" + score + "/3";
+        
+        // 初始化相机相关组件
+        mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            cameraOffset = mainCamera.transform.position - transform.position;
+        }
     }
 
     // Update is called once per frame
@@ -194,6 +211,27 @@ public class Player3 : MonoBehaviour
         else if (rig.velocity.y < -0.3f)
         {
             an.SetInteger("state", 3); // 向下移动时设为下落动画
+        }
+        
+        // 更新相机位置，使其跟随玩家的x轴位置
+        UpdateCameraPosition();
+    }
+    
+    /// <summary>
+    /// 更新相机位置，使其跟随玩家的x轴位置
+    /// </summary>
+    private void UpdateCameraPosition()
+    {
+        if (mainCamera != null)
+        {
+            // 相机x轴位置始终与角色保持一致
+            Vector3 cameraPosition = mainCamera.transform.position;
+            cameraPosition.x = transform.position.x;
+            
+            // 限制相机x轴位置在0到17之间
+            cameraPosition.x = Mathf.Clamp(cameraPosition.x, 0, 17);
+            
+            mainCamera.transform.position = cameraPosition;
         }
     }
     
