@@ -189,9 +189,18 @@ public class Player3 : MonoBehaviour
         {
             if (jumpCount > 0)
             {
+                // 记录当前是否在地面，用于判断是否是二段跳
+                bool isDoubleJump = jumpCount == 1 && !isGrounded;
+                
                 jumpCount--; // 减少可跳跃次数
                 au.clip = jump; // 设置跳跃音效
                 au.Play(); // 播放音效
+                
+                // 如果是二段跳，触发粒子效果
+                if (isDoubleJump && partical != null)
+                {
+                    partical.Play();
+                }
                 
                 // 重置Y轴速度并施加向上的力，实现更流畅的跳跃效果
                 rig.velocity = new Vector2(rig.velocity.x, 0f);
@@ -237,7 +246,7 @@ public class Player3 : MonoBehaviour
                 an.SetInteger("state", 4); // 二段跳动画
             }
         }
-        else if (rig.velocity.y < -0.1f)
+        else if (rig.velocity.y < -0.3f)
         {
             an.SetInteger("state", 3); // 下落动画
         }
