@@ -370,7 +370,7 @@ public class Player3 : MonoBehaviour
             au.Play();
             an.SetTrigger("hit"); // 播放受伤动画
             // 1秒后显示失败界面
-            Invoke("ShowFailPanel", 1f);
+            Invoke("ShowFailPanel", 2f);
         }
 
         // 如果玩家碰到齿轮，播放受伤动画并在1秒后显示失败界面
@@ -381,7 +381,7 @@ public class Player3 : MonoBehaviour
             au.Play();
             an.SetTrigger("hit"); // 播放受伤动画
             // 1秒后显示失败界面
-            Invoke("ShowFailPanel", 1.5f);
+            Invoke("ShowFailPanel", 2f);
         }
 
         // 如果玩家碰到开始平台，激活平台动画
