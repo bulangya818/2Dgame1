@@ -22155,6 +22155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 1778751076}
   RangeTrigger: {fileID: 253279453}
+  player3: {fileID: 1778751077}
 --- !u!1 &1849504496
 GameObject:
   m_ObjectHideFlags: 0
