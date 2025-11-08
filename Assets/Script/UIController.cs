@@ -172,7 +172,7 @@ public class UIController : MonoBehaviour
     public void restart()
     {
         hidepanels(); // 隐藏所有面板并恢复游戏
-        SceneManager.LoadScene("SampleScene"); // 重新加载SampleScene场景
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载SampleScene场景
     }
 
     /// <summary>

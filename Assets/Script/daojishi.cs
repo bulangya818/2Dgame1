@@ -27,7 +27,7 @@ public class daojishi : MonoBehaviour
         // 初始化计时器
         timer = 0;
         // 设置初始倒计时时间为60秒
-        Count = 60;
+        Count = 99999;
         // 启动协程进行倒计时
         StartCoroutine(jishi());//调用协程方法
     }

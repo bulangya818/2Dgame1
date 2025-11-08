@@ -93,6 +93,15 @@ public class Player3 : MonoBehaviour
     public LayerMask groundLayer;
     private bool isGrounded;
     private float groundCheckRadius = 0.2f;
+    
+    /// <summary>
+    /// 玩家生命值相关
+    /// </summary>
+    public float maxHealth = 100f;
+    private float currentHealth;
+    private float invincibilityTime = 1f;  // 无敌时间
+    private float lastHurtTime = 0f;       // 上次受伤时间
+    private bool isInvincible = false;     // 是否处于无敌状态
 
     // Start is called before the first frame update
     void Start()
@@ -108,6 +117,9 @@ public class Player3 : MonoBehaviour
         transform.position = startpos.transform.position;
         score = 0;
         text.text = "得分:" + score + "/3";
+        
+        // 初始化生命值
+        currentHealth = maxHealth;
         
         // 初始化相机相关组件
         mainCamera = Camera.main;
@@ -132,6 +144,12 @@ public class Player3 : MonoBehaviour
         
         // 检测是否在地面上
         CheckGrounded();
+        
+        // 更新无敌状态
+        if (isInvincible && Time.time - lastHurtTime >= invincibilityTime)
+        {
+            isInvincible = false;
+        }
         
         /*flip();
         Move();*/
@@ -302,6 +320,45 @@ public class Player3 : MonoBehaviour
     }
     
     /// <summary>
+    /// 处理玩家受伤
+    /// </summary>
+    /// <param name="damage">伤害值</param>
+    public void TakeHurt(float damage)
+    {
+        // 如果处于无敌状态或已经死亡，则不处理伤害
+        if (isInvincible || isDead) return;
+        
+        // 减少生命值
+        currentHealth -= damage;
+        
+        // 触发受伤效果
+        au.clip = hit;
+        au.Play();
+        an.SetTrigger("hurt");
+        
+        // 设置无敌状态
+        isInvincible = true;
+        lastHurtTime = Time.time;
+        
+        // 检查是否死亡
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+    
+    /// <summary>
+    /// 玩家死亡处理
+    /// </summary>
+    private void Die()
+    {
+        an.SetTrigger("hit"); // 播放死亡动画
+        // 2秒后显示失败界面
+        Invoke("ShowFailPanel", 2f);
+        isDead = true;
+    }
+    
+    /// <summary>
     /// 当玩家触发 OnTriggerEnter2D 事件时调用
     /// 触发器用于检测不产生物理反应的碰撞，如收集物品
     /// </summary>
@@ -362,14 +419,14 @@ public class Player3 : MonoBehaviour
             }
         }
 
-        // 如果玩家碰到尖刺，播放受伤动画并在1秒后显示失败界面
+        // 如果玩家碰到尖刺，播放受伤动画并在2秒后显示失败界面
         if (collision.transform.tag == "jianci")
         {
             isDead = true; // 标记角色为死亡状态
             au.clip = hit; // 设置音效
             au.Play();
-            an.SetTrigger("hit"); // 播放受伤动画
-            // 1秒后显示失败界面
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
             Invoke("ShowFailPanel", 2f);
         }
 
@@ -379,8 +436,8 @@ public class Player3 : MonoBehaviour
             isDead = true; // 标记角色为死亡状态
             au.clip = hit; // 设置音效
             au.Play();
-            an.SetTrigger("hit"); // 播放受伤动画
-            // 1秒后显示失败界面
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
             Invoke("ShowFailPanel", 2f);
         }
 
