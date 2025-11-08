@@ -283,9 +283,11 @@ public class Player3 : MonoBehaviour
             // 相机x轴位置始终与角色保持一致
             Vector3 cameraPosition = mainCamera.transform.position;
             cameraPosition.x = transform.position.x;
+            cameraPosition.y = transform.position.y;
             
             // 限制相机x轴位置在0到17之间
             cameraPosition.x = Mathf.Clamp(cameraPosition.x, 0, 17);
+            cameraPosition.y = Mathf.Clamp(cameraPosition.y, 0, 6);
             
             mainCamera.transform.position = cameraPosition;
         }
