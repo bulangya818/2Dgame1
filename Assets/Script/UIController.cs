@@ -194,7 +194,11 @@ public class UIController : MonoBehaviour
     public void next()
     {
         hidepanels(); // 隐藏所有面板并恢复游戏
-        // 跳转到下一关卡 SampleScene1
-        SceneManager.LoadScene("SampleScene 1");
+        
+        // 获取当前场景的索引
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        
+        // 加载下一个场景（按Build Settings中的顺序）
+        SceneManager.LoadScene(currentSceneIndex + 1);
     }
 }
