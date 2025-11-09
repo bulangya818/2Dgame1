@@ -93,12 +93,4 @@ public class HuoYan : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 当触发器退出碰撞时
-    /// </summary>
-    /// <param name="other">离开的物体</param>
-    private void OnTriggerExit2D(Collider2D other)
-    {
-        // 可以在这里添加额外的逻辑
-    }
 }

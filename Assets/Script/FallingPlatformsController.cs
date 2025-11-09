@@ -13,12 +13,17 @@ public class FallingPlatformsController : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    /*void Update()
     {
         if (transform.childCount == 0)
         {
             GameObject g = Instantiate(fplateform, transform.position, Quaternion.identity);
             g.transform.parent = transform;
         }
+    }*/
+    public void createplateform()
+    {
+        GameObject g = Instantiate(fplateform, transform.position, Quaternion.identity);
+        g.transform.parent = transform;
     }
 }

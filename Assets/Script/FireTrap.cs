@@ -8,7 +8,7 @@ public class FireTrap : MonoBehaviour
     public Animator animator;
     
     [Header("触发延迟")]
-    public float activationDelay = 1.0f;
+    public float activationDelay = 0.1f;
     
     [Header("伤害值")]
     public float damage = 100f;

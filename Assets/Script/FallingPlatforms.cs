@@ -42,6 +42,7 @@ public class FallingPlatforms : MonoBehaviour
         yield return new WaitForSeconds(1);
         rig.bodyType = RigidbodyType2D.Dynamic;
         yield return new WaitForSeconds(2);
+        transform.parent.transform.GetComponent<FallingPlatformsController>().createplateform();
         Destroy(this.gameObject);
     }
 }
