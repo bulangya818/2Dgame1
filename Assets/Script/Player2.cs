@@ -47,6 +47,11 @@ public class Player2 : MonoBehaviour
     private bool isMoving;
     
     /// <summary>
+    /// 标记角色是否已经死亡
+    /// </summary>
+    private bool isDead;
+    
+    /// <summary>
     /// 各种音效剪辑：吃水果、脚步声、跳跃声、受伤声
     /// </summary>
     public AudioClip eat, foot, jump, hit;
@@ -70,6 +75,33 @@ public class Player2 : MonoBehaviour
     /// 玩家当前分数
     /// </summary>
     private int score;
+    
+    /// <summary>
+    /// 主相机引用
+    /// </summary>
+    private Camera mainCamera;
+    
+    /// <summary>
+    /// 相机跟随偏移量
+    /// </summary>
+    private Vector3 cameraOffset;
+    
+    /// <summary>
+    /// 用于检测是否接触地面的地面检测
+    /// </summary>
+    public Transform groundCheck;
+    public LayerMask groundLayer;
+    private bool isGrounded;
+    private float groundCheckRadius = 0.2f;
+    
+    /// <summary>
+    /// 玩家生命值相关
+    /// </summary>
+    public float maxHealth = 100f;
+    private float currentHealth;
+    private float invincibilityTime = 1f;  // 无敌时间
+    private float lastHurtTime = 0f;       // 上次受伤时间
+    private bool isInvincible = false;     // 是否处于无敌状态
 
     // Start is called before the first frame update
     void Start()
@@ -77,6 +109,7 @@ public class Player2 : MonoBehaviour
         // 获取玩家对象的各种组件
         faceRight = true;
         isMoving = false; // 初始化移动状态为false
+        isDead = false; // 初始化死亡状态为false
         rig = GetComponent<Rigidbody2D>(); // 获取2D刚体组件用于物理控制
         an = GetComponent<Animator>(); // 获取动画控制器组件
         au = GetComponent<AudioSource>(); // 获取音频源组件
@@ -84,11 +117,40 @@ public class Player2 : MonoBehaviour
         transform.position = startpos.transform.position;
         score = 0;
         text.text = "得分:" + score + "/3";
+        
+        // 初始化生命值
+        currentHealth = maxHealth;
+        
+        // 初始化相机相关组件
+        mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            cameraOffset = mainCamera.transform.position - transform.position;
+        }
+        
+        // 尝试获取地面检测组件
+        if (groundCheck == null)
+        {
+            // 如果没有指定groundCheck，则使用玩家位置作为检测点
+            groundCheck = transform;
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
+        // 如果角色已经死亡，则禁用所有控制
+        if (isDead) return;
+        
+        // 检测是否在地面上
+        CheckGrounded();
+        
+        // 更新无敌状态
+        if (isInvincible && Time.time - lastHurtTime >= invincibilityTime)
+        {
+            isInvincible = false;
+        }
+        
         /*flip();
         Move();*/
         // 获取水平轴输入（A/D键或方向键左右），返回-1到1之间的值
@@ -141,24 +203,41 @@ public class Player2 : MonoBehaviour
         }
 
         // 检测空格键是否被按下，用于跳跃，同时检查是否还有跳跃次数
-        if (Input.GetKeyDown(KeyCode.Space) && jumpCount > 0)
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            jumpCount--; // 减少可跳跃次数
-            au.clip = jump; // 设置跳跃音效
-            au.Play(); // 播放音效
-            // 给玩家施加向上的力，实现跳跃效果
-            // Vector2.up * 5 是跳跃力度，ForceMode2D.Impulse表示瞬间力
-            rig.AddForce(Vector2.up * 5, ForceMode2D.Impulse);
+            if (jumpCount > 0)
+            {
+                // 记录当前是否在地面，用于判断是否是二段跳
+                bool isDoubleJump = jumpCount == 1 && !isGrounded;
+                
+                jumpCount--; // 减少可跳跃次数
+                au.clip = jump; // 设置跳跃音效
+                au.Play(); // 播放音效
+                
+                // 如果是二段跳，触发粒子效果
+                if (isDoubleJump && partical != null)
+                {
+                    partical.Play();
+                }
+                
+                // 重置Y轴速度并施加向上的力，实现更流畅的跳跃效果
+                rig.velocity = new Vector2(rig.velocity.x, 0f);
+                rig.AddForce(Vector2.up * 6, ForceMode2D.Impulse);
+            }
         }
 
         // 根据玩家垂直速度调整重力大小，实现更自然的跳跃
         if (rig.velocity.y > 0)
         {
-            rig.gravityScale = 1; // 上升时重力较小，让跳跃更柔和
+            rig.gravityScale = 1.5f; // 上升时重力较小，让跳跃更柔和
+        }
+        else if (rig.velocity.y < 0)
+        {
+            rig.gravityScale = 2.5f; // 下降时重力较大，让下落更快
         }
         else
         {
-            rig.gravityScale = 2; // 下降时重力较大，让下落更快
+            rig.gravityScale = 2f; // 悬空时使用默认重力
         }
 
         // 根据水平移动速度设置角色动画状态
@@ -174,21 +253,113 @@ public class Player2 : MonoBehaviour
 
         // 根据垂直速度设置跳跃和下落动画状态
         // state = 2: 起跳状态, state = 3: 下落状态, state = 4: 二段跳状态
-        if (rig.velocity.y > 0.3f)
+        if (rig.velocity.y > 0.1f)
         {
-            an.SetInteger("state", 2); // 向上移动时设为起跳动画
-            if (jumpCount == 0)
+            if (jumpCount == 1)
             {
-                an.SetInteger("state", 4); // 如果没有剩余跳跃次数则设为二段跳动画
+                an.SetInteger("state", 2); // 第一次跳跃动画
+            }
+            else if (jumpCount == 0)
+            {
+                an.SetInteger("state", 4); // 二段跳动画
             }
         }
         else if (rig.velocity.y < -0.3f)
         {
-            an.SetInteger("state", 3); // 向下移动时设为下落动画
+            an.SetInteger("state", 3); // 下落动画
+        }
+        
+        // 更新相机位置，使其跟随玩家的x轴位置
+        UpdateCameraPosition();
+    }
+    
+    /// <summary>
+    /// 更新相机位置，使其跟随玩家的x轴位置
+    /// </summary>
+    private void UpdateCameraPosition()
+    {
+        if (mainCamera != null)
+        {
+            // 相机x轴位置始终与角色保持一致
+            Vector3 cameraPosition = mainCamera.transform.position;
+            cameraPosition.x = transform.position.x;
+            cameraPosition.y = transform.position.y;
+            
+            // 限制相机x轴位置在0到17之间
+            cameraPosition.x = Mathf.Clamp(cameraPosition.x, 0, 4.5f);
+            cameraPosition.y = Mathf.Clamp(cameraPosition.y, 0, 4);
+            
+            mainCamera.transform.position = cameraPosition;
         }
     }
     
-
+    /// <summary>
+    /// 检测角色是否接触地面
+    /// </summary>
+    private void CheckGrounded()
+    {
+        // 使用圆形检测方式检测是否接触地面
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(groundCheck.position, groundCheckRadius, groundLayer);
+        isGrounded = colliders.Length > 0;
+        
+        // 如果在地面上，则重置跳跃次数
+        if (isGrounded && rig.velocity.y <= 0)
+        {
+            jumpCount = 2;
+        }
+    }
+    
+    /// <summary>
+    /// 绘制地面检测的辅助线（仅在编辑器中显示）
+    /// </summary>
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+        }
+    }
+    
+    /// <summary>
+    /// 处理玩家受伤
+    /// </summary>
+    /// <param name="damage">伤害值</param>
+    public void TakeHurt(float damage)
+    {
+        // 如果处于无敌状态或已经死亡，则不处理伤害
+        if (isInvincible || isDead) return;
+        
+        // 减少生命值
+        currentHealth -= damage;
+        
+        // 触发受伤效果
+        au.clip = hit;
+        au.Play();
+        an.SetTrigger("hurt");
+        
+        // 设置无敌状态
+        isInvincible = true;
+        lastHurtTime = Time.time;
+        
+        // 检查是否死亡
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+    
+    /// <summary>
+    /// 玩家死亡处理
+    /// </summary>
+    private void Die()
+    {
+        an.SetTrigger("hit"); // 播放死亡动画
+        // 2秒后显示失败界面
+        Invoke("ShowFailPanel", 2f);
+        isDead = true;
+    }
+    
     /// <summary>
     /// 当玩家触发 OnTriggerEnter2D 事件时调用
     /// 触发器用于检测不产生物理反应的碰撞，如收集物品
@@ -212,6 +383,7 @@ public class Player2 : MonoBehaviour
         if (collision.tag == "wall")
         {
             Debug.Log("Player hit the wall, reloading scene");
+            isDead = true; // 标记角色为死亡状态
             SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载当前场景
         }
 
@@ -228,6 +400,7 @@ public class Player2 : MonoBehaviour
     /// </summary>
     private void showsuccpanel()
     {
+        isDead = true; // 标记角色为死亡状态
         UIController.instance.showpanel("succ");
     }
 
@@ -241,27 +414,33 @@ public class Player2 : MonoBehaviour
         // 如果玩家与地面发生碰撞，则重置跳跃次数
         if (collision.transform.tag == "ground")
         {
-            jumpCount = 2; // 重置跳跃次数为2，允许再次双跳
+            // 只有当玩家向下移动或静止时才重置跳跃次数
+            if (rig.velocity.y <= 0)
+            {
+                jumpCount = 2; // 重置跳跃次数为2，允许再次双跳
+            }
         }
 
-        // 如果玩家碰到尖刺，播放受伤动画并在1秒后显示失败界面
+        // 如果玩家碰到尖刺，播放受伤动画并在2秒后显示失败界面
         if (collision.transform.tag == "jianci")
         {
+            isDead = true; // 标记角色为死亡状态
             au.clip = hit; // 设置音效
             au.Play();
-            an.SetTrigger("hit"); // 播放受伤动画
-            // 1秒后显示失败界面
-            Invoke("ShowFailPanel", 1f);
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
+            Invoke("ShowFailPanel", 2f);
         }
 
         // 如果玩家碰到齿轮，播放受伤动画并在1秒后显示失败界面
         if (collision.transform.tag == "chilun")
         {
+            isDead = true; // 标记角色为死亡状态
             au.clip = hit; // 设置音效
             au.Play();
-            an.SetTrigger("hit"); // 播放受伤动画
-            // 1秒后显示失败界面
-            Invoke("ShowFailPanel", 1f);
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
+            Invoke("ShowFailPanel", 2f);
         }
 
         // 如果玩家碰到开始平台，激活平台动画
@@ -303,6 +482,7 @@ public class Player2 : MonoBehaviour
     /// </summary>
     private void changescene()
     {
+        isDead = true; // 标记角色为死亡状态
         SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载当前场景
     }
 }
