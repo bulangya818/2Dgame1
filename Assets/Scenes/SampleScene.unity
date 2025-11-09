@@ -673,7 +673,7 @@ MonoBehaviour:
   partical: {fileID: 258031483}
   eat: {fileID: 8300000, guid: 7c7ea28dd5da5c24281de3c6841a4ca5, type: 3}
   foot: {fileID: 8300000, guid: cf0e379b48d482c4785a01cabc9bb389, type: 3}
-  jump: {fileID: 8300000, guid: 719cf2324e5195e4ca853ca29a517110, type: 3}
+  jump: {fileID: 8300000, guid: 98a635d5eeecba6418b12e879704a88a, type: 3}
   hit: {fileID: 8300000, guid: 1bb75c64fbf99004190cace39829dc4e, type: 3}
   startpos: {fileID: 1367029639}
   text: {fileID: 1897283134}
@@ -5819,7 +5819,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 481d35464562a334389ed95b88b7c6d6, type: 3}
+  m_audioClip: {fileID: 8300000, guid: 2edb382100aba974fb686dc114e79683, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
@@ -12879,7 +12879,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -310486581, guid: 4fcfd66a056cf444c82695083d2702c7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 0b5c1f7dd03183b4a9318e415033563c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
