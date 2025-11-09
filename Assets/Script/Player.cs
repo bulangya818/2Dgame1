@@ -1,172 +1,492 @@
-/*using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Net.Mime;
-using UnityEditor;
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Player类控制玩家角色的移动、跳跃、动画和碰撞检测
+/// Player3类控制玩家角色的移动、跳跃和碰撞检测
 /// </summary>
 public class Player : MonoBehaviour
 {
-    private float h; // 水平输入轴的值 (-1到1之间)
-    private Rigidbody2D rig; // 玩家的2D刚体组件，用于物理运动控制
-    private Animator an; // 玩家的动画控制器组件
-    private int jumpCount; // 跳跃次数计数器，限制连续跳跃次数
-    private float sepeed; // 角色移动速度（注：此处拼写有误，应为speed）
-    public ParticleSystem partical; // 粒子系统，用于播放特效
-    private bool faceRight; // 角色面向状态，true为向右，false为向左
-    public GameObject blood; // 血迹特效预制体
-    public AudioClip eat, foot, jump, hit; // 各种音效剪辑：吃水果、脚步声、跳跃声、受伤声
-    private AudioSource au; // 音频源组件
-    public Text text; // UI文本组件，用于显示分数
-    private int score; // 玩家得分
-    public GameObject startpos; // 起始位置对象
-
     /// <summary>
-    /// 角色状态枚举，用于控制动画状态
+    /// 水平输入轴的值 (-1到1之间)
     /// </summary>
-    private enum state
-    {
-        idle,       // 待机状态
-        run,        // 跑步状态
-        jump,       // 跳跃状态
-        fall,       // 下落状态
-        doublejump  // 二段跳状态
-    }
-
+    private float h;
+    
     /// <summary>
-    /// Start is called before the first frame update
-    /// 初始化玩家角色的各种属性和组件
+    /// 玩家的刚体组件，用于物理运动控制
     /// </summary>
+    private Rigidbody2D rig;
+    
+    /// <summary>
+    /// 跳跃次数计数器，限制连续跳跃次数
+    /// </summary>
+    private int jumpCount;
+    
+    /// <summary>
+    /// 玩家的动画控制器组件
+    /// </summary>
+    private Animator an;
+    
+    /// <summary>
+    /// 粒子系统组件
+    /// </summary>
+    public ParticleSystem partical;
+    
+    /// <summary>
+    /// 标记玩家是否面朝右边
+    /// </summary>
+    private bool faceRight;
+    
+    /// <summary>
+    /// 标记角色是否正在移动
+    /// </summary>
+    private bool isMoving;
+    
+    /// <summary>
+    /// 标记角色是否已经死亡
+    /// </summary>
+    private bool isDead;
+    
+    /// <summary>
+    /// 各种音效剪辑：吃水果、脚步声、跳跃声、受伤声
+    /// </summary>
+    public AudioClip eat, foot, jump, hit;
+    
+    /// <summary>
+    /// 音频源组件
+    /// </summary>
+    private AudioSource au;
+    
+    /// <summary>
+    /// 玩家初始位置
+    /// </summary>
+    public GameObject startpos;
+    
+    /// <summary>
+    /// 分数显示文本组件
+    /// </summary>
+    public Text text;
+    
+    /// <summary>
+    /// 玩家当前分数
+    /// </summary>
+    private int score;
+    
+    /// <summary>
+    /// 主相机引用
+    /// </summary>
+    private Camera mainCamera;
+    
+    /// <summary>
+    /// 相机跟随偏移量
+    /// </summary>
+    private Vector3 cameraOffset;
+    
+    /// <summary>
+    /// 用于检测是否接触地面的地面检测
+    /// </summary>
+    public Transform groundCheck;
+    public LayerMask groundLayer;
+    private bool isGrounded;
+    private float groundCheckRadius = 0.2f;
+    
+    /// <summary>
+    /// 玩家生命值相关
+    /// </summary>
+    public float maxHealth = 100f;
+    private float currentHealth;
+    private float invincibilityTime = 1f;  // 无敌时间
+    private float lastHurtTime = 0f;       // 上次受伤时间
+    private bool isInvincible = false;     // 是否处于无敌状态
+    
+    /// <summary>
+    /// 快速移动相关
+    /// </summary>
+    private float lastATime = 0f;
+    private float lastDTime = 0f;
+    private float dashCooldown = 0.3f; // 冲刺冷却时间
+    private float dashForce = 10f; // 冲刺力度
+    private bool isDashing = false; // 是否正在冲刺
+
+    // Start is called before the first frame update
     void Start()
     {
-        faceRight = true; // 初始化角色面向右侧
+        // 获取玩家对象的各种组件
+        faceRight = true;
+        isMoving = false; // 初始化移动状态为false
+        isDead = false; // 初始化死亡状态为false
         rig = GetComponent<Rigidbody2D>(); // 获取2D刚体组件用于物理控制
         an = GetComponent<Animator>(); // 获取动画控制器组件
         au = GetComponent<AudioSource>(); // 获取音频源组件
         jumpCount = 2; // 初始化跳跃次数为2，允许双跳
-        sepeed = 2; // 设置移动速度为2
-        score = 0; // 初始化分数为0
-        text.text = "score:" + score + "/3"; // 更新UI分数显示
-        transform.position = startpos.transform.position; // 将玩家位置设置为起始位置
+        transform.position = startpos.transform.position;
+        score = 0;
+        text.text = "得分:" + score ;
+        
+        // 初始化生命值
+        currentHealth = maxHealth;
+        
+        // 初始化相机相关组件
+        mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            cameraOffset = mainCamera.transform.position - transform.position;
+        }
+        
+        // 尝试获取地面检测组件
+        if (groundCheck == null)
+        {
+            // 如果没有指定groundCheck，则使用玩家位置作为检测点
+            groundCheck = transform;
+        }
     }
 
-    /// <summary>
-    /// Update is called once per frame
-    /// 每帧调用，处理玩家输入和状态更新
-    /// </summary>
+    // Update is called once per frame
     void Update()
     {
-        Move();    // 处理角色移动
-        Jump();    // 处理角色跳跃
-        flip();    // 处理角色翻转（面向）
-        playerAni(); // 处理角色动画状态
-    }
-
-    /// <summary>
-    /// 控制角色水平移动
-    /// </summary>
-    private void Move()
-    {
-        h = Input.GetAxis("Horizontal"); // 获取水平轴输入（A/D键或方向键左右）
-        rig.velocity = new Vector2(h * sepeed, rig.velocity.y); // 设置角色水平速度
-    }
-
-    /// <summary>
-    /// 控制角色跳跃
-    /// </summary>
-    private void Jump()
-    {
-        // 检测空格键是否被按下且还有跳跃次数
-        if (Input.GetKeyDown(KeyCode.Space) && jumpCount > 0)
-        {
-            jumpCount--; // 减少可跳跃次数
-            au.clip = jump; // 设置跳跃音效
-            au.Play(); // 播放音效
-            rig.AddForce(Vector2.up * 5, ForceMode2D.Impulse); // 给玩家施加向上的力实现跳跃
-            PlayPS(); // 播放粒子特效
-        }
-    }
-
-    /// <summary>
-    /// 控制角色翻转（面向）
-    /// </summary>
-    private void flip()
-    {
-        // 当向右移动且当前面向左侧时，翻转角色
-        if (h > 0 && faceRight == false)
-        {
-            flipc(); // 执行翻转操作
-        }
-
-        // 当向左移动且当前面向右侧时，翻转角色
-        if (h < 0 && faceRight == true)
-        {
-            flipc(); // 执行翻转操作
-        }
-    }
-
-    /// <summary>
-    /// 执行角色翻转的具体操作
-    /// </summary>
-    private void flipc()
-    {
-        au.clip = foot; // 设置脚步音效
-        au.Play(); // 播放音效
-        Vector2 v = transform.localScale; // 获取当前缩放
-        v.x *= -1; // X轴缩放取反实现翻转
-        transform.localScale = v; // 应用新的缩放
-        PlayPS(); // 播放粒子特效
-        faceRight = !faceRight; // 更新面向状态
-    }
-
-    /// <summary>
-    /// 播放粒子特效
-    /// </summary>
-    private void PlayPS()
-    {
-        partical.Play(); // 播放粒子系统
-    }
-
-    /// <summary>
-    /// 根据角色状态设置动画
-    /// </summary>
-    private void playerAni()
-    {
-        state playerstate; // 定义角色状态变量
+        // 如果角色已经死亡，则禁用所有控制
+        if (isDead) return;
         
-        // 根据水平移动速度判断是待机还是跑步状态
-        if (Mathf.Abs(h) > 0.1f)
+        // 检测是否在地面上
+        CheckGrounded();
+        
+        // 更新无敌状态
+        if (isInvincible && Time.time - lastHurtTime >= invincibilityTime)
         {
-            playerstate = state.run; // 水平移动时设为跑步状态
+            isInvincible = false;
+        }
+        
+        /*flip();
+        Move();*/
+        // 获取水平轴输入（A/D键或方向键左右），返回-1到1之间的值
+        h = Input.GetAxis("Horizontal");
+        
+        // 检测快速按键进行冲刺
+        CheckDashInput();
+        
+        // 设置动画参数speed为水平输入的绝对值
+        an.SetFloat("speed", Mathf.Abs(h));
+
+        // 设置玩家的水平速度，保持垂直速度不变
+        // h * 2f 控制移动速度，数值越大移动越快
+        if (!isDashing)
+        {
+            rig.velocity = new Vector2(h * 2f, rig.velocity.y);
+        }
+
+        // 如果玩家向右移动，设置玩家面向右侧
+        if (h > 0 /*&&faceRight==false*/)
+        {
+            // 只有当角色从静止状态转为移动状态时才播放脚步声
+            if (!isMoving && Mathf.Abs(h) > 0.2f)
+            {
+                au.clip = foot; // 设置脚步音效
+                au.Play(); // 播放音效
+                isMoving = true; // 标记为正在移动
+            }
+
+            Vector2 v = transform.localScale;
+            v.x = 1; // 设置X轴缩放为正数，角色面向右侧
+            transform.localScale = v;
+            /*partical.Play();
+            faceRight = true;*/
+        }
+
+        // 如果玩家向左移动，设置玩家面向左侧
+        else if (h < 0 /*&&faceRight==true*/)
+        {
+            // 只有当角色从静止状态转为移动状态时才播放脚步声
+            if (!isMoving && Mathf.Abs(h) > 0.2f)
+            {
+                au.clip = foot; // 设置脚步音效
+                au.Play(); // 播放音效
+                isMoving = true; // 标记为正在移动
+            }
+
+            Vector2 v = transform.localScale;
+            v.x = -1; // 设置X轴缩放为负数，角色面向左侧
+            transform.localScale = v;
+            /*partical.Play();
+            faceRight = false;*/
+        }
+        // 如果玩家停止移动
+        else if (Mathf.Abs(h) <= 0.2f)
+        {
+            isMoving = false; // 标记为停止移动
+        }
+
+        // 检测空格键是否被按下，用于跳跃，同时检查是否还有跳跃次数
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (jumpCount > 0)
+            {
+                // 记录当前是否在地面，用于判断是否是二段跳
+                bool isDoubleJump = jumpCount == 1 && !isGrounded;
+                
+                jumpCount--; // 减少可跳跃次数
+                au.clip = jump; // 设置跳跃音效
+                au.Play(); // 播放音效
+                
+                // 如果是二段跳，触发粒子效果
+                if (isDoubleJump && partical != null)
+                {
+                    partical.Play();
+                }
+                
+                // 重置Y轴速度并施加向上的力，实现更流畅的跳跃效果
+                rig.velocity = new Vector2(rig.velocity.x, 0f);
+                rig.AddForce(Vector2.up * 6, ForceMode2D.Impulse);
+            }
+        }
+
+        // 根据玩家垂直速度调整重力大小，实现更自然的跳跃
+        if (rig.velocity.y > 0)
+        {
+            rig.gravityScale = 1.5f; // 上升时重力较小，让跳跃更柔和
+        }
+        else if (rig.velocity.y < 0)
+        {
+            rig.gravityScale = 2.5f; // 下降时重力较大，让下落更快
         }
         else
         {
-            playerstate = state.idle; // 静止时设为待机状态
+            rig.gravityScale = 2f; // 悬空时使用默认重力
         }
 
-        // 根据垂直速度判断跳跃、下落或二段跳状态
-        if (rig.velocity.y > 0.3f)
+        // 根据水平移动速度设置角色动画状态
+        // state = 0: 待机状态, state = 1: 跑步状态
+        if (Mathf.Abs(h) > 0.2f)
         {
-            playerstate = state.jump; // 向上移动时设为跳跃状态
-            if (jumpCount == 0)
+            an.SetInteger("state", 1); // 水平移动时设为跑步动画
+        }
+        else
+        {
+            an.SetInteger("state", 0); // 静止时设为待机动画
+        }
+
+        // 根据垂直速度设置跳跃和下落动画状态
+        // state = 2: 起跳状态, state = 3: 下落状态, state = 4: 二段跳状态
+        if (rig.velocity.y > 0.1f)
+        {
+            if (jumpCount == 1)
             {
-                playerstate = state.doublejump; // 如果没有剩余跳跃次数则设为二段跳状态
+                an.SetInteger("state", 2); // 第一次跳跃动画
+            }
+            else if (jumpCount == 0)
+            {
+                an.SetInteger("state", 4); // 二段跳动画
             }
         }
-        else if (rig.velocity.y < -0.2f)
+        else if (rig.velocity.y < -0.3f)
         {
-            playerstate = state.fall; // 向下移动时设为下落状态
+            an.SetInteger("state", 3); // 下落动画
+        }
+        
+        // 更新相机位置，使其跟随玩家的x轴位置
+        UpdateCameraPosition();
+    }
+    
+    /// <summary>
+    /// 检测快速按键输入以执行冲刺
+    /// </summary>
+    private void CheckDashInput()
+    {
+        // 检查是否按下A键
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            // 检查是否在冷却时间内
+            if (Time.time - lastATime <= dashCooldown)
+            {
+                // 向左执行冲刺
+                PerformDash(-1f);
+            }
+            
+            // 更新上次按A键时间
+            lastATime = Time.time;
+        }
+        
+        // 检查是否按下D键
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            // 检查是否在冷却时间内
+            if (Time.time - lastDTime <= dashCooldown)
+            {
+                // 向右执行冲刺
+                PerformDash(1f);
+            }
+            
+            // 更新上次按D键时间
+            lastDTime = Time.time;
+        }
+    }
+    
+    /// <summary>
+    /// 执行冲刺动作
+    /// </summary>
+    /// <param name="direction">冲刺方向 (-1为左, 1为右)</param>
+    private void PerformDash(float direction)
+    {
+        // 如果已经在冲刺，则不重复执行
+        if (isDashing) return;
+        
+        isDashing = true;
+        
+        // 添加水平方向的力
+        rig.AddForce(new Vector2(direction * dashForce, 0f), ForceMode2D.Impulse);
+        
+        // 开始冲刺结束的协程
+        StartCoroutine(EndDash());
+    }
+    
+    /// <summary>
+    /// 结束冲刺的协程
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator EndDash()
+    {
+        // 等待一小段时间后结束冲刺
+        yield return new WaitForSeconds(0.2f);
+        isDashing = false;
+    }
+    
+    /// <summary>
+    /// 更新相机位置，使其跟随玩家的x轴位置
+    /// </summary>
+    private void UpdateCameraPosition()
+    {
+        if (mainCamera != null)
+        {
+            // 相机x轴位置始终与角色保持一致
+            Vector3 cameraPosition = mainCamera.transform.position;
+            cameraPosition.x = transform.position.x;
+            cameraPosition.y = transform.position.y;
+            
+            // 限制相机x轴位置在0到17之间
+            cameraPosition.x = Mathf.Clamp(cameraPosition.x, 0, 10f);
+            cameraPosition.y = Mathf.Clamp(cameraPosition.y, 0, 10.5f);
+            
+            mainCamera.transform.position = cameraPosition;
+        }
+    }
+    
+    /// <summary>
+    /// 检测角色是否接触地面
+    /// </summary>
+    private void CheckGrounded()
+    {
+        // 使用圆形检测方式检测是否接触地面
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(groundCheck.position, groundCheckRadius, groundLayer);
+        isGrounded = colliders.Length > 0;
+        
+        // 如果在地面上，则重置跳跃次数
+        if (isGrounded && rig.velocity.y <= 0)
+        {
+            jumpCount = 2;
+        }
+    }
+    
+    /// <summary>
+    /// 绘制地面检测的辅助线（仅在编辑器中显示）
+    /// </summary>
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+        }
+    }
+    
+    /// <summary>
+    /// 处理玩家受伤
+    /// </summary>
+    /// <param name="damage">伤害值</param>
+    public void TakeHurt(float damage)
+    {
+        // 如果处于无敌状态或已经死亡，则不处理伤害
+        if (isInvincible || isDead) return;
+        
+        // 减少生命值
+        currentHealth -= damage;
+        
+        // 触发受伤效果
+        au.clip = hit;
+        au.Play();
+        an.SetTrigger("hurt");
+        
+        // 设置无敌状态
+        isInvincible = true;
+        lastHurtTime = Time.time;
+        
+        // 检查是否死亡
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+    
+    /// <summary>
+    /// 玩家死亡处理
+    /// </summary>
+    private void Die()
+    {
+        an.SetTrigger("hit"); // 播放死亡动画
+        // 2秒后显示失败界面
+        Invoke("ShowFailPanel", 2f);
+        isDead = true;
+    }
+    
+    /// <summary>
+    /// 当玩家触发 OnTriggerEnter2D 事件时调用
+    /// 触发器用于检测不产生物理反应的碰撞，如收集物品
+    /// </summary>
+    /// <param name="collision">与玩家发生触发的碰撞体</param>
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        Debug.Log("Player triggered with: " + collision.gameObject.name + " with tag: " + collision.tag);
+
+        // 如果玩家碰到了水果标签的对象，则播放音效并销毁该对象
+        if (collision.tag == "fruit")
+        {
+            au.clip = eat; // 设置吃水果音效
+            au.Play(); // 播放音效
+            Destroy(collision.gameObject); // 销毁水果对象
+            score++;
+            text.text = "得分:" + score ;
         }
 
-        an.SetInteger("state", (int)playerstate); // 将状态转换为整数并设置给动画控制器
+        // 如果玩家碰到了墙壁标签的对象，则重新加载当前场景（游戏重启）
+        if (collision.tag == "wall")
+        {
+            Debug.Log("Player hit the wall, reloading scene");
+            isDead = true; // 标记角色为死亡状态
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载当前场景
+        }
+
+        // 如果玩家碰到旗子标签的对象，触发动画效果
+        if (collision.tag == "flag")
+        {
+            collision.transform.GetComponent<Animator>().SetBool("flag", true); // 激活旗子动画
+            Invoke("showsuccpanel", 1f);
+        }
     }
 
     /// <summary>
-    /// 当玩家发生物理碰撞时调用
+    /// 显示成功面板
+    /// </summary>
+    private void showsuccpanel()
+    {
+        isDead = true; // 标记角色为死亡状态
+        UIController.instance.showpanel("succ");
+    }
+
+    /// <summary>
+    /// 当玩家发生物理碰撞时调用OnCollisionEnter2D方法
+    /// 物理碰撞会产生实际的物理反应，如站在地面上
     /// </summary>
     /// <param name="collision">碰撞信息</param>
     private void OnCollisionEnter2D(Collision2D collision)
@@ -174,42 +494,54 @@ public class Player : MonoBehaviour
         // 如果玩家与地面发生碰撞，则重置跳跃次数
         if (collision.transform.tag == "ground")
         {
-            jumpCount = 2; // 重置跳跃次数为2，允许再次双跳
+            // 只有当玩家向下移动或静止时才重置跳跃次数
+            if (rig.velocity.y <= 0)
+            {
+                jumpCount = 2; // 重置跳跃次数为2，允许再次双跳
+            }
         }
 
-        // 如果玩家碰到水果，增加分数并销毁水果
-        if (collision.transform.tag == "fruit")
+        // 如果玩家碰到尖刺，播放受伤动画并在2秒后显示失败界面
+        if (collision.transform.tag == "jianci")
         {
-            score++; // 分数加1
-            text.text = "score:" + score + "/3"; // 更新UI分数显示
-            au.clip = eat; // 设置吃水果音效
-            au.Play(); // 播放音效
-            Destroy(collision.gameObject); // 销毁水果对象
+            isDead = true; // 标记角色为死亡状态
+            au.clip = hit; // 设置音效
+            au.Play();
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
+            Invoke("ShowFailPanel", 2f);
         }
 
-        // 如果玩家碰到墙壁（当前未实现任何逻辑）
-        if (collision.transform.tag == "wall")
+        // 如果玩家碰到齿轮，播放受伤动画并在1秒后显示失败界面
+        if (collision.transform.tag == "chilun")
         {
+            isDead = true; // 标记角色为死亡状态
+            au.clip = hit; // 设置音效
+            au.Play();
+            an.SetTrigger("hit"); // 播放死亡动画
+            // 2秒后显示失败界面
+            Invoke("ShowFailPanel", 2f);
         }
 
-        // 如果玩家碰到尖刺，播放受伤效果并在1秒后显示失败界面
-        if (collision.transform.tag == "spikes")
+        // 如果玩家碰到开始平台，激活平台动画
+        if (collision.transform.tag == "Start")
         {
-            au.clip = hit; // 设置受伤音效
-            au.Play(); // 播放音效
-            GameObject e = Instantiate(blood, transform.position, Quaternion.identity); // 在玩家位置生成血迹特效
-            Destroy(e, 0.5f); // 0.5秒后销毁血迹特效
-            an.SetTrigger("hit"); // 触发受伤动画
-
-            // 1秒后显示失败界面
-            Invoke("ShowFailPanel", 1f);
+            Animator an = collision.transform.GetComponent<Animator>(); // 获取平台的动画组件
+            an.SetBool("Start", true); // 激活平台动画
         }
+    }
 
-        // 如果玩家碰到起始平台，触发动画效果
-        if (collision.transform.tag == "startpos")
+    /// <summary>
+    /// 当玩家离开碰撞时调用OnCollisionExit2D方法
+    /// </summary>
+    /// <param name="collision">离开碰撞的物体信息</param>
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        // 如果离开的是开始平台，关闭平台动画
+        if (collision.transform.tag == "Start")
         {
-            Animator startan = collision.transform.GetComponent<Animator>(); // 获取平台的动画组件
-            startan.SetInteger("ismove", 1); // 设置平台移动动画
+            Animator an = collision.transform.GetComponent<Animator>(); // 获取平台的动画组件
+            an.SetBool("Start", false); // 关闭平台动画
         }
     }
 
@@ -225,8 +557,12 @@ public class Player : MonoBehaviour
         }
     }
 
-    /*private void showpanell()
+    /// <summary>
+    /// 切换场景方法，重新加载当前场景
+    /// </summary>
+    private void changescene()
     {
-        UIcontroller.instance.showpanel("failpanel");
-    }#1#
-}*/
+        isDead = true; // 标记角色为死亡状态
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); // 重新加载当前场景
+    }
+}

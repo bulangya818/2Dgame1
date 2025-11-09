@@ -116,7 +116,7 @@ public class Player2 : MonoBehaviour
         jumpCount = 2; // 初始化跳跃次数为2，允许双跳
         transform.position = startpos.transform.position;
         score = 0;
-        text.text = "得分:" + score + "/3";
+        text.text = "得分:" + score ;
         
         // 初始化生命值
         currentHealth = maxHealth;
@@ -376,7 +376,7 @@ public class Player2 : MonoBehaviour
             au.Play(); // 播放音效
             Destroy(collision.gameObject); // 销毁水果对象
             score++;
-            text.text = "得分:" + score + "/3";
+            text.text = "得分:" + score ;
         }
 
         // 如果玩家碰到了墙壁标签的对象，则重新加载当前场景（游戏重启）

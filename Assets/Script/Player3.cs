@@ -102,6 +102,15 @@ public class Player3 : MonoBehaviour
     private float invincibilityTime = 1f;  // 无敌时间
     private float lastHurtTime = 0f;       // 上次受伤时间
     private bool isInvincible = false;     // 是否处于无敌状态
+    
+    /// <summary>
+    /// 快速移动相关
+    /// </summary>
+    private float lastATime = 0f;
+    private float lastDTime = 0f;
+    private float dashCooldown = 0.3f; // 冲刺冷却时间
+    private float dashForce = 10f; // 冲刺力度
+    private bool isDashing = false; // 是否正在冲刺
 
     // Start is called before the first frame update
     void Start()
@@ -116,7 +125,7 @@ public class Player3 : MonoBehaviour
         jumpCount = 2; // 初始化跳跃次数为2，允许双跳
         transform.position = startpos.transform.position;
         score = 0;
-        text.text = "得分:" + score + "/3";
+        text.text = "得分:" + score ;
         
         // 初始化生命值
         currentHealth = maxHealth;
@@ -155,11 +164,19 @@ public class Player3 : MonoBehaviour
         Move();*/
         // 获取水平轴输入（A/D键或方向键左右），返回-1到1之间的值
         h = Input.GetAxis("Horizontal");
-        an.SetFloat("speed", Mathf.Abs(h)); // 设置动画参数speed为水平输入的绝对值
+        
+        // 检测快速按键进行冲刺
+        CheckDashInput();
+        
+        // 设置动画参数speed为水平输入的绝对值
+        an.SetFloat("speed", Mathf.Abs(h));
 
         // 设置玩家的水平速度，保持垂直速度不变
         // h * 2f 控制移动速度，数值越大移动越快
-        rig.velocity = new Vector2(h * 2f, rig.velocity.y);
+        if (!isDashing)
+        {
+            rig.velocity = new Vector2(h * 2f, rig.velocity.y);
+        }
 
         // 如果玩家向右移动，设置玩家面向右侧
         if (h > 0 /*&&faceRight==false*/)
@@ -274,6 +291,69 @@ public class Player3 : MonoBehaviour
     }
     
     /// <summary>
+    /// 检测快速按键输入以执行冲刺
+    /// </summary>
+    private void CheckDashInput()
+    {
+        // 检查是否按下A键
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            // 检查是否在冷却时间内
+            if (Time.time - lastATime <= dashCooldown)
+            {
+                // 向左执行冲刺
+                PerformDash(-1f);
+            }
+            
+            // 更新上次按A键时间
+            lastATime = Time.time;
+        }
+        
+        // 检查是否按下D键
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            // 检查是否在冷却时间内
+            if (Time.time - lastDTime <= dashCooldown)
+            {
+                // 向右执行冲刺
+                PerformDash(1f);
+            }
+            
+            // 更新上次按D键时间
+            lastDTime = Time.time;
+        }
+    }
+    
+    /// <summary>
+    /// 执行冲刺动作
+    /// </summary>
+    /// <param name="direction">冲刺方向 (-1为左, 1为右)</param>
+    private void PerformDash(float direction)
+    {
+        // 如果已经在冲刺，则不重复执行
+        if (isDashing) return;
+        
+        isDashing = true;
+        
+        // 添加水平方向的力
+        rig.AddForce(new Vector2(direction * dashForce, 0f), ForceMode2D.Impulse);
+        
+        // 开始冲刺结束的协程
+        StartCoroutine(EndDash());
+    }
+    
+    /// <summary>
+    /// 结束冲刺的协程
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator EndDash()
+    {
+        // 等待一小段时间后结束冲刺
+        yield return new WaitForSeconds(0.2f);
+        isDashing = false;
+    }
+    
+    /// <summary>
     /// 更新相机位置，使其跟随玩家的x轴位置
     /// </summary>
     private void UpdateCameraPosition()
@@ -376,7 +456,7 @@ public class Player3 : MonoBehaviour
             au.Play(); // 播放音效
             Destroy(collision.gameObject); // 销毁水果对象
             score++;
-            text.text = "得分:" + score + "/3";
+            text.text = "得分:" + score ;
         }
 
         // 如果玩家碰到了墙壁标签的对象，则重新加载当前场景（游戏重启）
