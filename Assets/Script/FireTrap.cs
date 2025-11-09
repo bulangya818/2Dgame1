@@ -13,6 +13,9 @@ public class FireTrap : MonoBehaviour
     [Header("伤害值")]
     public float damage = 100f;
     
+    [Header("火焰子对象")]
+    public HuoYan huoYan;
+    
     private bool isActive = false;
     private bool playerOnTop = false;
     
@@ -23,6 +26,16 @@ public class FireTrap : MonoBehaviour
         if (animator == null)
         {
             animator = GetComponent<Animator>();
+        }
+        
+        // 查找火焰子对象
+        if (huoYan == null)
+        {
+            huoYan = GetComponentInChildren<HuoYan>();
+            if (huoYan != null)
+            {
+                huoYan.fireTrap = this;
+            }
         }
     }
 
@@ -82,7 +95,7 @@ public class FireTrap : MonoBehaviour
     }
     
     /// <summary>
-    /// 激活陷阱，播放On动画
+    /// 激活陷阱，播放On动画并激活火焰
     /// </summary>
     private void ActivateTrap()
     {
@@ -95,6 +108,27 @@ public class FireTrap : MonoBehaviour
             {
                 animator.SetTrigger("On");
             }
+            
+            // 激活火焰子对象
+            if (huoYan != null)
+            {
+                huoYan.Activate();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 禁用陷阱
+    /// </summary>
+    public void DeactivateTrap()
+    {
+        isActive = false;
+        playerOnTop = false;
+        
+        // 禁用火焰子对象
+        if (huoYan != null)
+        {
+            huoYan.Deactivate();
         }
     }
     
